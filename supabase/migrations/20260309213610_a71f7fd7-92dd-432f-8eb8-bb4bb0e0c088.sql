@@ -1,0 +1,1 @@
+ALTER TABLE public.leads ADD COLUMN resultado_ligacao text DEFAULT NULL;

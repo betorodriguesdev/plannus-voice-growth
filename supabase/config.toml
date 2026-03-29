@@ -1,0 +1,22 @@
+project_id = "ydpoirqkcjcwpombghge"
+
+[functions.send-lead]
+verify_jwt = false
+
+[functions.retell-mcp]
+verify_jwt = false
+
+[functions.retell-webhook]
+verify_jwt = false
+
+[functions.send-video-link]
+verify_jwt = false
+
+[functions.trigger-call]
+verify_jwt = false
+
+[functions.batch-caller]
+verify_jwt = false
+
+[functions.retell-recording]
+verify_jwt = false
