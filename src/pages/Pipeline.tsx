@@ -1,56 +1,43 @@
 import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { GripVertical, X, Phone, Mail, Globe, MapPin, User, Hash } from "lucide-react";
+import { GripVertical, X, Phone, Mail, User, Hash } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { formatDistanceToNow } from "date-fns";
 import { ptBR } from "date-fns/locale";
 
 type Lead = {
   id: string;
-  church_name: string | null;
-  business_name?: string | null;
-  pastor_name: string | null;
-  owner_name?: string | null;
+  name: string | null;
+  company: string | null;
   phone: string | null;
   email: string | null;
-  website: string | null;
-  city: string | null;
-  state: string | null;
-  status: string | null;
-  score: number | null;
-  source: string | null;
-  call_attempts: number | null;
-  last_contact_at: string | null;
-  next_follow_up_at: string | null;
+  tags: string[] | null;
   notes: string | null;
-  language: string | null;
-  resultado_ligacao: string | null;
+  last_contact: string | null;
   created_at: string | null;
   updated_at: string | null;
 };
 
 const columns = ["NOVO", "ANALISADO", "CONTATADO", "LINK ENVIADO", "RESPONDEU", "DEMO", "TESTE", "CLIENTE"];
 
-const statusToColumn: Record<string, string> = {
-  novo: "NOVO",
-  descoberto: "NOVO",
-  analisado: "ANALISADO",
-  em_contato: "CONTATADO",
-  link_enviado: "LINK ENVIADO",
-  falou_com_pastor: "RESPONDEU",
-  sem_resposta: "CONTATADO",
-  sem_resposta_parcial: "CONTATADO",
-  demo: "DEMO",
-  teste: "TESTE",
-  cliente: "CLIENTE",
+const tagToColumn = (tags: string[] | null): string => {
+  const t = tags || [];
+  if (t.includes("cliente")) return "CLIENTE";
+  if (t.includes("teste")) return "TESTE";
+  if (t.includes("demo")) return "DEMO";
+  if (t.includes("respondeu")) return "RESPONDEU";
+  if (t.includes("link_enviado")) return "LINK ENVIADO";
+  if (t.includes("em_contato") || t.includes("contatado")) return "CONTATADO";
+  if (t.includes("analisado")) return "ANALISADO";
+  return "NOVO";
 };
 
-const columnToStatus: Record<string, string> = {
+const columnToTag: Record<string, string> = {
   "NOVO": "novo",
   "ANALISADO": "analisado",
   "CONTATADO": "em_contato",
   "LINK ENVIADO": "link_enviado",
-  "RESPONDEU": "falou_com_pastor",
+  "RESPONDEU": "respondeu",
   "DEMO": "demo",
   "TESTE": "teste",
   "CLIENTE": "cliente",
@@ -67,11 +54,6 @@ const colColors: Record<string, string> = {
   "CLIENTE": "bg-success",
 };
 
-const langLabels: Record<string, string> = {
-  pt: "🇧🇷 Português",
-  en: "🇺🇸 English",
-  es: "🇪🇸 Español",
-};
 
 export default function Pipeline() {
   const [leads, setLeads] = useState<Lead[]>([]);
@@ -80,24 +62,30 @@ export default function Pipeline() {
 
   useEffect(() => {
     const fetchLeads = async () => {
-      const { data } = await supabase.from("leads").select("*").order("created_at", { ascending: false });
+      const { data } = await supabase.from("crm_contacts").select("*").order("created_at", { ascending: false });
       setLeads((data as Lead[]) || []);
     };
     fetchLeads();
     const channel = supabase
       .channel("pipeline-leads")
-      .on("postgres_changes", { event: "*", schema: "public", table: "leads" }, () => fetchLeads())
+      .on("postgres_changes", { event: "*", schema: "public", table: "crm_contacts" }, () => fetchLeads())
       .subscribe();
     return () => { supabase.removeChannel(channel); };
   }, []);
 
-  const getColumn = (lead: Lead) => statusToColumn[lead.status || "novo"] || "NOVO";
+  const getColumn = (lead: Lead) => tagToColumn(lead.tags);
 
   const handleDrop = async (column: string) => {
     if (!dragging) return;
-    const newStatus = columnToStatus[column];
-    await supabase.from("leads").update({ status: newStatus, updated_at: new Date().toISOString() }).eq("id", dragging);
-    setLeads(prev => prev.map(l => l.id === dragging ? { ...l, status: newStatus } : l));
+    const newTag = columnToTag[column];
+    const lead = leads.find(l => l.id === dragging);
+    if (!lead) return;
+    // Replace pipeline stage tags with the new one, keeping other tags (like "scraper", niche, etc.)
+    const stageTags = new Set(Object.values(columnToTag));
+    const otherTags = (lead.tags || []).filter(t => !stageTags.has(t));
+    const newTags = [...otherTags, newTag];
+    await supabase.from("crm_contacts").update({ tags: newTags, updated_at: new Date().toISOString() }).eq("id", dragging);
+    setLeads(prev => prev.map(l => l.id === dragging ? { ...l, tags: newTags } : l));
     setDragging(null);
   };
 
@@ -134,18 +122,17 @@ export default function Pipeline() {
                     className="bg-card border border-border rounded-md p-2.5 cursor-pointer hover:border-primary/30 transition-colors"
                   >
                     <div className="flex items-start justify-between mb-1">
-                      <p className="text-xs font-medium text-foreground leading-tight">{lead.business_name || lead.church_name || "—"}</p>
+                      <p className="text-xs font-medium text-foreground leading-tight">{lead.company || lead.name || "—"}</p>
                       <GripVertical className="w-3 h-3 text-muted-foreground shrink-0" />
                     </div>
-                    <p className="text-xxs text-muted-foreground">{lead.owner_name || lead.pastor_name || "—"}</p>
+                    <p className="text-xxs text-muted-foreground">{lead.name || "—"}</p>
                     <div className="flex items-center justify-between mt-2">
                       <div className="flex items-center gap-1">
-                        <span className="text-[10px]">{lead.language === "pt" ? "🇧🇷" : lead.language === "es" ? "🇪🇸" : "🇺🇸"}</span>
-                        <span className="text-xxs text-primary font-medium">{lead.score || 0}</span>
+                        <span className="text-xxs text-primary font-medium">{(lead.tags || []).filter(t => !["scraper", "plannus-voice", "novo"].includes(t)).join(", ") || "—"}</span>
                       </div>
                       <span className="text-xxs text-muted-foreground">
-                        {lead.last_contact_at
-                          ? formatDistanceToNow(new Date(lead.last_contact_at), { addSuffix: true, locale: ptBR })
+                        {lead.last_contact
+                          ? formatDistanceToNow(new Date(lead.last_contact), { addSuffix: true, locale: ptBR })
                           : "—"}
                       </span>
                     </div>
@@ -178,35 +165,33 @@ export default function Pipeline() {
             >
               <div className="flex items-start justify-between">
                 <div>
-                  <h2 className="text-base font-semibold text-foreground">{selectedLead.business_name || selectedLead.church_name || "—"}</h2>
-                  <p className="text-xs text-muted-foreground">{[selectedLead.city, selectedLead.state].filter(Boolean).join(", ")}</p>
+                  <h2 className="text-base font-semibold text-foreground">{selectedLead.company || selectedLead.name || "—"}</h2>
+                  <p className="text-xs text-muted-foreground">{selectedLead.notes || "—"}</p>
                 </div>
                 <button onClick={() => setSelectedLead(null)} className="p-1 hover:bg-muted rounded-md transition-colors">
                   <X className="w-4 h-4 text-muted-foreground" />
                 </button>
               </div>
 
-              {/* Language badge */}
-              <div className="flex items-center gap-2">
+              {/* Stage badge */}
+              <div className="flex items-center gap-2 flex-wrap">
                 <span className={`text-xs px-2.5 py-1 rounded-full font-medium ${
                   colColors[getColumn(selectedLead)]
                 } bg-opacity-20`}>
                   {getColumn(selectedLead)}
                 </span>
-                <span className="text-xs px-2.5 py-1 rounded-full bg-muted text-foreground">
-                  {langLabels[selectedLead.language || "en"] || selectedLead.language}
-                </span>
+                {(selectedLead.tags || []).map(tag => (
+                  <span key={tag} className="text-xs px-2.5 py-1 rounded-full bg-muted text-foreground">{tag}</span>
+                ))}
               </div>
 
               {/* Info grid */}
               <div className="space-y-3">
                 {[
-                  { icon: User, label: "Proprietário", value: selectedLead.owner_name || selectedLead.pastor_name },
+                  { icon: User, label: "Contato", value: selectedLead.name },
                   { icon: Phone, label: "Telefone", value: selectedLead.phone },
                   { icon: Mail, label: "Email", value: selectedLead.email },
-                  { icon: Globe, label: "Website", value: selectedLead.website },
-                  { icon: MapPin, label: "Localização", value: [selectedLead.city, selectedLead.state].filter(Boolean).join(", ") },
-                  { icon: Hash, label: "Fonte", value: selectedLead.source },
+                  { icon: Hash, label: "Tags", value: (selectedLead.tags || []).join(", ") },
                 ].map(({ icon: Icon, label, value }) => (
                   <div key={label} className="flex items-start gap-3">
                     <Icon className="w-3.5 h-3.5 text-muted-foreground mt-0.5 shrink-0" />
@@ -218,54 +203,14 @@ export default function Pipeline() {
                 ))}
               </div>
 
-              {/* Score */}
-              <div>
-                <p className="text-xxs text-muted-foreground uppercase tracking-wider mb-1">Score</p>
-                <div className="flex items-center gap-2">
-                  <div className="flex-1 h-2 bg-muted rounded-full overflow-hidden">
-                    <div className="h-full bg-primary rounded-full" style={{ width: `${selectedLead.score || 0}%` }} />
-                  </div>
-                  <span className="text-sm font-semibold text-primary">{selectedLead.score || 0}</span>
-                </div>
-              </div>
-
-              {/* Call info */}
+              {/* Contact history */}
               <div className="bg-muted/50 rounded-lg p-3 space-y-2">
                 <p className="text-xxs text-muted-foreground uppercase tracking-wider">Histórico de Contato</p>
                 <div className="flex justify-between text-xs">
-                  <span className="text-muted-foreground">Tentativas de ligação</span>
-                  <span className="text-foreground font-medium">{selectedLead.call_attempts || 0}</span>
-                </div>
-                <div className="flex justify-between text-xs">
-                  <span className="text-muted-foreground">Resultado da ligação</span>
-                  <span className={`font-medium ${
-                    selectedLead.resultado_ligacao === "interessado" ? "text-success" :
-                    selectedLead.resultado_ligacao === "nao_interessado" ? "text-destructive" :
-                    "text-foreground"
-                  }`}>
-                    {({
-                      atendeu: "Atendeu",
-                      ocupado: "Ocupado",
-                      nao_atendeu: "Não atendeu",
-                      interessado: "Interessado",
-                      nao_interessado: "Não interessado",
-                      pediu_retorno: "Pediu retorno",
-                    } as Record<string, string>)[selectedLead.resultado_ligacao || ""] || "—"}
-                  </span>
-                </div>
-                <div className="flex justify-between text-xs">
                   <span className="text-muted-foreground">Último contato</span>
                   <span className="text-foreground">
-                    {selectedLead.last_contact_at
-                      ? formatDistanceToNow(new Date(selectedLead.last_contact_at), { addSuffix: true, locale: ptBR })
-                      : "—"}
-                  </span>
-                </div>
-                <div className="flex justify-between text-xs">
-                  <span className="text-muted-foreground">Próximo follow-up</span>
-                  <span className="text-foreground">
-                    {selectedLead.next_follow_up_at
-                      ? formatDistanceToNow(new Date(selectedLead.next_follow_up_at), { addSuffix: true, locale: ptBR })
+                    {selectedLead.last_contact
+                      ? formatDistanceToNow(new Date(selectedLead.last_contact), { addSuffix: true, locale: ptBR })
                       : "—"}
                   </span>
                 </div>

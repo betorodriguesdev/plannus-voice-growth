@@ -3,7 +3,6 @@ import { motion } from "framer-motion";
 import { MetricCard } from "@/components/dashboard/MetricCard";
 import { Church, Search, Smartphone, Phone, CalendarCheck, UserCheck } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
-import { getLeadSourceType } from "@/lib/lead-source";
 
 export default function Dashboard() {
   const [stats, setStats] = useState({
@@ -20,29 +19,29 @@ export default function Dashboard() {
 
   useEffect(() => {
     const fetchStats = async () => {
-      let allLeads: any[] = [];
+      let allContacts: any[] = [];
       let from = 0;
       const PAGE_SIZE = 1000;
       while (true) {
-        const { data } = await supabase.from("leads").select("status, source, metadata").range(from, from + PAGE_SIZE - 1);
+        const { data } = await supabase.from("crm_contacts").select("tags").range(from, from + PAGE_SIZE - 1);
         if (!data || data.length === 0) break;
-        allLeads = allLeads.concat(data);
+        allContacts = allContacts.concat(data);
         if (data.length < PAGE_SIZE) break;
         from += PAGE_SIZE;
       }
       const { count: callCount } = await supabase.from("call_logs").select("*", { count: "exact", head: true });
       const { count: demoCount } = await supabase.from("calendar_events").select("*", { count: "exact", head: true }).eq("event_type", "demo");
 
-      const all = allLeads;
+      const all = allContacts;
       setStats({
         totalLeads: all.length,
-        scraperLeads: all.filter(l => getLeadSourceType(l.source, l.metadata) === "scraper").length,
-        appLeads: all.filter(l => getLeadSourceType(l.source, l.metadata) === "app").length,
-        qualified: all.filter(l => (l.status || "") !== "novo").length,
-        contacted: all.filter(l => ["em_contato", "falou_com_pastor"].includes(l.status || "")).length,
+        scraperLeads: all.filter(l => Array.isArray(l.tags) && l.tags.includes("scraper")).length,
+        appLeads: all.filter(l => !Array.isArray(l.tags) || !l.tags.includes("scraper")).length,
+        qualified: all.filter(l => !Array.isArray(l.tags) || !l.tags.includes("novo")).length,
+        contacted: 0,
         calls: callCount || 0,
         demos: demoCount || 0,
-        clients: all.filter(l => l.status === "cliente").length,
+        clients: all.filter(l => Array.isArray(l.tags) && l.tags.includes("cliente")).length,
       });
       setLoading(false);
     };

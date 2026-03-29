@@ -24,7 +24,7 @@ interface CallLog {
   attempt_number: number | null;
   lead_id: string | null;
   metadata: any;
-  leads?: { church_name: string | null; business_name?: string | null; pastor_name: string | null; owner_name?: string | null } | null;
+  crm_contacts?: { name: string | null; company: string | null } | null;
 }
 
 interface RetellCallData {
@@ -191,7 +191,7 @@ export default function Calls() {
   const fetchCalls = async () => {
     const { data } = await supabase
       .from("call_logs")
-      .select("*, leads(church_name, business_name, pastor_name, owner_name)")
+      .select("*, crm_contacts(name, company)")
       .order("started_at", { ascending: false })
       .limit(200);
     // Only show calls that have recordings
@@ -296,7 +296,7 @@ export default function Calls() {
 
               <div className="flex-1 min-w-0">
                 <p className="text-sm font-medium text-foreground truncate">
-                  {(call as any).leads?.business_name || (call as any).leads?.church_name || call.to_number || "Desconhecido"}
+                  {(call as any).crm_contacts?.company || (call as any).crm_contacts?.name || call.to_number || "Desconhecido"}
                 </p>
                 <div className="flex items-center gap-2 mt-0.5">
                   <span className="text-xs text-muted-foreground">{formatTime(call.started_at)}</span>
@@ -327,7 +327,7 @@ export default function Calls() {
             <ScrollArea className="h-full px-5 pb-10">
               <div className="py-4 border-b border-border mb-4">
                 <h2 className="text-lg font-semibold text-foreground">
-                  {(selectedCall as any).leads?.business_name || (selectedCall as any).leads?.church_name || selectedCall.to_number || "Ligação"}
+                  {(selectedCall as any).crm_contacts?.company || (selectedCall as any).crm_contacts?.name || selectedCall.to_number || "Ligação"}
                 </h2>
                 <div className="flex items-center gap-3 mt-1.5">
                   <Badge variant="outline" className={`text-xs ${statusColor(selectedCall.call_status)}`}>
@@ -339,9 +339,9 @@ export default function Calls() {
                   </span>
                   <SentimentIcon sentiment={selectedCall.sentiment} />
                 </div>
-                {((selectedCall as any).leads?.owner_name || (selectedCall as any).leads?.pastor_name) && (
+                {(selectedCall as any).crm_contacts?.name && (
                   <p className="text-sm text-muted-foreground mt-1">
-                    Proprietário: {(selectedCall as any).leads.owner_name || (selectedCall as any).leads.pastor_name}
+                    Contato: {(selectedCall as any).crm_contacts.name}
                   </p>
                 )}
                 {selectedCall.to_number && (
