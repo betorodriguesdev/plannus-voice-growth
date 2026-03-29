@@ -176,7 +176,7 @@ export default function Calls() {
   const [syncing, setSyncing] = useState(false);
   const [selectedCall, setSelectedCall] = useState<CallRecord | null>(null);
 
-  const RETELL_PROXY = "http://187.124.93.72:3099/calls";
+  const RETELL_PROXY = "/api/calls";
 
   const fetchCalls = async () => {
     try {
