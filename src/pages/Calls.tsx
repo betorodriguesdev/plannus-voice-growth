@@ -176,13 +176,41 @@ export default function Calls() {
   const [syncing, setSyncing] = useState(false);
   const [selectedCall, setSelectedCall] = useState<CallRecord | null>(null);
 
+  const RETELL_PROXY = "http://187.124.93.72:3099/calls";
+
   const fetchCalls = async () => {
-    const { data } = await supabase
-      .from("calls")
-      .select("*")
-      .order("started_at", { ascending: false })
-      .limit(200);
-    setCalls((data as any) || []);
+    try {
+      const res = await fetch(RETELL_PROXY);
+      const raw: any[] = await res.json();
+      // Map Retell call format to CallRecord
+      const mapped: CallRecord[] = raw.map((c: any) => ({
+        id: c.call_id,
+        caller_number: c.direction === "outbound" ? c.to_number : c.from_number,
+        caller_name: null,
+        duration: c.end_timestamp && c.start_timestamp
+          ? Math.round((c.end_timestamp - c.start_timestamp) / 1000)
+          : null,
+        status: c.call_status === "ended" ? "completed" : c.call_status === "error" ? "failed" : c.call_status || "pending",
+        recording_url: c.recording_url || null,
+        transcription: c.transcript || null,
+        started_at: c.start_timestamp ? new Date(c.start_timestamp).toISOString() : null,
+        ended_at: c.end_timestamp ? new Date(c.end_timestamp).toISOString() : null,
+        metadata: {
+          retell_call_id: c.call_id,
+          direction: c.direction || "outbound",
+          from_number: c.from_number,
+          to_number: c.to_number,
+          sentiment: c.call_analysis?.user_sentiment || null,
+          summary: c.call_analysis?.call_summary || null,
+          transcript_object: c.transcript_object || null,
+          call_analysis: c.call_analysis || null,
+          disconnection_reason: c.disconnection_reason || null,
+        },
+      }));
+      setCalls(mapped);
+    } catch (e) {
+      console.error("Fetch error:", e);
+    }
     setLoading(false);
   };
 
@@ -192,15 +220,8 @@ export default function Calls() {
 
   const syncFromRetell = async () => {
     setSyncing(true);
-    try {
-      const { data, error } = await supabase.functions.invoke("retell-sync");
-      if (error) throw error;
-      toast.success(`Sincronizado! ${data.synced} novas, ${data.updated} atualizadas (${data.total_retell} total no Retell)`);
-      await fetchCalls();
-    } catch (e: any) {
-      console.error("Sync error:", e);
-      toast.error("Erro ao sincronizar: " + (e.message || "erro desconhecido"));
-    }
+    await fetchCalls();
+    toast.success("Ligações atualizadas!");
     setSyncing(false);
   };
 
