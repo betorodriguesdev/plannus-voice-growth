@@ -11,27 +11,17 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Slider } from "@/components/ui/slider";
 import { toast } from "sonner";
 
-interface CallLog {
+interface CallRecord {
   id: string;
-  retell_call_id: string | null;
-  call_status: string | null;
-  duration_seconds: number | null;
-  started_at: string | null;
-  to_number: string | null;
-  transcript: string | null;
-  summary: string | null;
-  sentiment: string | null;
-  attempt_number: number | null;
-  lead_id: string | null;
-  metadata: any;
-  crm_contacts?: { name: string | null; company: string | null } | null;
-}
-
-interface RetellCallData {
+  caller_number: string;
+  caller_name: string | null;
+  duration: number | null;
+  status: string | null;
   recording_url: string | null;
-  transcript: string | null;
-  transcript_object: Array<{ role: string; content: string }> | null;
-  call_analysis: { call_summary?: string; user_sentiment?: string } | null;
+  transcription: string | null;
+  started_at: string | null;
+  ended_at: string | null;
+  metadata: any;
 }
 
 function formatDuration(seconds: number | null) {
@@ -55,19 +45,19 @@ function SentimentIcon({ sentiment }: { sentiment: string | null }) {
 
 function statusColor(status: string | null) {
   switch (status) {
-    case "ended": return "bg-emerald-500/15 text-emerald-600 border-emerald-500/20";
-    case "initiated": return "bg-amber-500/15 text-amber-600 border-amber-500/20";
-    case "error": return "bg-red-500/15 text-red-600 border-red-500/20";
+    case "completed": return "bg-emerald-500/15 text-emerald-600 border-emerald-500/20";
+    case "in_progress": return "bg-amber-500/15 text-amber-600 border-amber-500/20";
+    case "failed": return "bg-red-500/15 text-red-600 border-red-500/20";
     default: return "bg-muted text-muted-foreground";
   }
 }
 
 function statusLabel(status: string | null) {
   switch (status) {
-    case "ended": return "Finalizada";
-    case "initiated": return "Iniciada";
-    case "error": return "Erro";
-    case "no-answer": return "Sem resposta";
+    case "completed": return "Finalizada";
+    case "in_progress": return "Em andamento";
+    case "failed": return "Erro";
+    case "pending": return "Pendente";
     default: return status || "—";
   }
 }
@@ -142,7 +132,7 @@ function AudioPlayer({ url }: { url: string }) {
   );
 }
 
-function TranscriptViewer({ transcript, transcriptObject }: { transcript: string | null; transcriptObject: Array<{ role: string; content: string }> | null }) {
+function TranscriptViewer({ transcription, transcriptObject }: { transcription: string | null; transcriptObject: Array<{ role: string; content: string }> | null }) {
   if (transcriptObject && transcriptObject.length > 0) {
     return (
       <div className="space-y-3">
@@ -164,10 +154,10 @@ function TranscriptViewer({ transcript, transcriptObject }: { transcript: string
     );
   }
 
-  if (transcript) {
+  if (transcription) {
     return (
       <div className="bg-muted/50 rounded-2xl p-4">
-        <p className="text-sm text-foreground leading-relaxed whitespace-pre-wrap">{transcript}</p>
+        <p className="text-sm text-foreground leading-relaxed whitespace-pre-wrap">{transcription}</p>
       </div>
     );
   }
@@ -181,25 +171,18 @@ function TranscriptViewer({ transcript, transcriptObject }: { transcript: string
 }
 
 export default function Calls() {
-  const [calls, setCalls] = useState<CallLog[]>([]);
+  const [calls, setCalls] = useState<CallRecord[]>([]);
   const [loading, setLoading] = useState(true);
   const [syncing, setSyncing] = useState(false);
-  const [selectedCall, setSelectedCall] = useState<CallLog | null>(null);
-  const [retellData, setRetellData] = useState<RetellCallData | null>(null);
-  const [loadingDetail, setLoadingDetail] = useState(false);
+  const [selectedCall, setSelectedCall] = useState<CallRecord | null>(null);
 
   const fetchCalls = async () => {
     const { data } = await supabase
-      .from("call_logs")
-      .select("*, crm_contacts(name, company)")
+      .from("calls")
+      .select("*")
       .order("started_at", { ascending: false })
       .limit(200);
-    // Only show calls that have recordings
-    const withRecordings = ((data as any) || []).filter((call: any) => {
-      const meta = call.metadata as any;
-      return meta?.recording_url;
-    });
-    setCalls(withRecordings);
+    setCalls((data as any) || []);
     setLoading(false);
   };
 
@@ -221,38 +204,7 @@ export default function Calls() {
     setSyncing(false);
   };
 
-  const openCall = async (call: CallLog) => {
-    setSelectedCall(call);
-    setRetellData(null);
-
-    // First check if we already have recording data in metadata
-    const meta = call.metadata as any;
-    if (meta?.recording_url || meta?.transcript_object) {
-      setRetellData({
-        recording_url: meta.recording_url || null,
-        transcript: call.transcript,
-        transcript_object: meta.transcript_object || null,
-        call_analysis: meta.call_analysis || null,
-      });
-      return;
-    }
-
-    // Fallback: fetch from Retell API
-    if (call.retell_call_id) {
-      setLoadingDetail(true);
-      try {
-        const { data, error } = await supabase.functions.invoke("retell-recording", {
-          body: { call_id: call.retell_call_id },
-        });
-        if (!error && data) {
-          setRetellData(data as RetellCallData);
-        }
-      } catch (e) {
-        console.error("Error fetching recording:", e);
-      }
-      setLoadingDetail(false);
-    }
-  };
+  const meta = (call: CallRecord) => (call.metadata as any) || {};
 
   return (
     <div className="space-y-4">
@@ -275,6 +227,12 @@ export default function Calls() {
         <div className="flex items-center justify-center py-20">
           <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
         </div>
+      ) : calls.length === 0 ? (
+        <div className="flex flex-col items-center justify-center py-20 gap-3 text-center">
+          <Phone className="w-10 h-10 text-muted-foreground/30" />
+          <p className="text-muted-foreground text-sm">Nenhuma ligação ainda.</p>
+          <p className="text-muted-foreground/60 text-xs">Clique em "Sincronizar Retell" para importar as ligações.</p>
+        </div>
       ) : (
         <div className="space-y-2">
           {calls.map((call, i) => (
@@ -283,36 +241,41 @@ export default function Calls() {
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: i * 0.02 }}
-              onClick={() => openCall(call)}
+              onClick={() => setSelectedCall(call)}
               className="w-full flex items-center gap-3 p-3.5 rounded-2xl bg-card border border-border hover:border-primary/30 transition-all active:scale-[0.98] text-left group"
             >
               <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ${
-                call.call_status === "ended" ? "bg-emerald-500/15" : "bg-muted"
+                call.status === "completed" ? "bg-emerald-500/15" : "bg-muted"
               }`}>
                 <Phone className={`w-4 h-4 ${
-                  call.call_status === "ended" ? "text-emerald-600" : "text-muted-foreground"
+                  call.status === "completed" ? "text-emerald-600" : "text-muted-foreground"
                 }`} />
               </div>
 
               <div className="flex-1 min-w-0">
                 <p className="text-sm font-medium text-foreground truncate">
-                  {(call as any).crm_contacts?.company || (call as any).crm_contacts?.name || call.to_number || "Desconhecido"}
+                  {call.caller_name || call.caller_number || "Desconhecido"}
                 </p>
                 <div className="flex items-center gap-2 mt-0.5">
                   <span className="text-xs text-muted-foreground">{formatTime(call.started_at)}</span>
                   <span className="text-xs text-muted-foreground">·</span>
                   <span className="text-xs text-muted-foreground flex items-center gap-1">
                     <Clock className="w-3 h-3" />
-                    {formatDuration(call.duration_seconds)}
+                    {formatDuration(call.duration)}
                   </span>
-                  <SentimentIcon sentiment={call.sentiment} />
+                  <SentimentIcon sentiment={meta(call).sentiment} />
                 </div>
               </div>
 
-              <Badge variant="outline" className={`text-[10px] shrink-0 ${statusColor(call.call_status)}`}>
-                {statusLabel(call.call_status)}
-              </Badge>
-              <ChevronRight className="w-4 h-4 text-muted-foreground/50 group-hover:text-primary transition-colors shrink-0" />
+              <div className="flex items-center gap-2 shrink-0">
+                {meta(call).direction === "outbound" && (
+                  <span className="text-[10px] text-muted-foreground/60">↗ saída</span>
+                )}
+                <Badge variant="outline" className={`text-[10px] ${statusColor(call.status)}`}>
+                  {statusLabel(call.status)}
+                </Badge>
+                <ChevronRight className="w-4 h-4 text-muted-foreground/50 group-hover:text-primary transition-colors" />
+              </div>
             </motion.button>
           ))}
         </div>
@@ -322,74 +285,61 @@ export default function Calls() {
         <SheetContent side="bottom" className="rounded-t-3xl h-[85vh] bg-card border-border p-0">
           <SheetTitle className="sr-only">Detalhes da ligação</SheetTitle>
           <div className="w-10 h-1 bg-muted-foreground/30 rounded-full mx-auto mt-3 mb-2" />
-          
+
           {selectedCall && (
             <ScrollArea className="h-full px-5 pb-10">
               <div className="py-4 border-b border-border mb-4">
                 <h2 className="text-lg font-semibold text-foreground">
-                  {(selectedCall as any).crm_contacts?.company || (selectedCall as any).crm_contacts?.name || selectedCall.to_number || "Ligação"}
+                  {selectedCall.caller_name || selectedCall.caller_number || "Ligação"}
                 </h2>
-                <div className="flex items-center gap-3 mt-1.5">
-                  <Badge variant="outline" className={`text-xs ${statusColor(selectedCall.call_status)}`}>
-                    {statusLabel(selectedCall.call_status)}
+                <div className="flex items-center gap-3 mt-1.5 flex-wrap">
+                  <Badge variant="outline" className={`text-xs ${statusColor(selectedCall.status)}`}>
+                    {statusLabel(selectedCall.status)}
                   </Badge>
                   <span className="text-xs text-muted-foreground">{formatTime(selectedCall.started_at)}</span>
                   <span className="text-xs text-muted-foreground flex items-center gap-1">
-                    <Clock className="w-3 h-3" /> {formatDuration(selectedCall.duration_seconds)}
+                    <Clock className="w-3 h-3" /> {formatDuration(selectedCall.duration)}
                   </span>
-                  <SentimentIcon sentiment={selectedCall.sentiment} />
+                  <SentimentIcon sentiment={meta(selectedCall).sentiment} />
+                  {meta(selectedCall).direction && (
+                    <span className="text-xs text-muted-foreground/60">
+                      {meta(selectedCall).direction === "outbound" ? "↗ Saída" : "↙ Entrada"}
+                    </span>
+                  )}
                 </div>
-                {(selectedCall as any).crm_contacts?.name && (
-                  <p className="text-sm text-muted-foreground mt-1">
-                    Contato: {(selectedCall as any).crm_contacts.name}
-                  </p>
-                )}
-                {selectedCall.to_number && (
-                  <p className="text-xs text-muted-foreground mt-0.5">
-                    📞 {selectedCall.to_number}
-                  </p>
-                )}
+                <p className="text-xs text-muted-foreground mt-1">📞 {selectedCall.caller_number}</p>
               </div>
 
-              {loadingDetail ? (
-                <div className="flex flex-col items-center justify-center py-12 gap-3">
-                  <Loader2 className="w-6 h-6 animate-spin text-primary" />
-                  <p className="text-sm text-muted-foreground">Carregando gravação...</p>
-                </div>
-              ) : (
-                <div className="space-y-5">
-                  {(retellData?.call_analysis?.call_summary || selectedCall.summary) && (
-                    <div>
-                      <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-2">Resumo</h3>
-                      <div className="bg-primary/5 border border-primary/10 rounded-2xl p-4">
-                        <p className="text-sm text-foreground leading-relaxed">
-                          {retellData?.call_analysis?.call_summary || selectedCall.summary}
-                        </p>
-                      </div>
+              <div className="space-y-5">
+                {meta(selectedCall).summary && (
+                  <div>
+                    <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-2">Resumo</h3>
+                    <div className="bg-primary/5 border border-primary/10 rounded-2xl p-4">
+                      <p className="text-sm text-foreground leading-relaxed">{meta(selectedCall).summary}</p>
+                    </div>
+                  </div>
+                )}
+
+                <div>
+                  <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-2">Gravação</h3>
+                  {selectedCall.recording_url ? (
+                    <AudioPlayer url={selectedCall.recording_url} />
+                  ) : (
+                    <div className="bg-muted/30 rounded-2xl p-6 text-center">
+                      <Volume2 className="w-8 h-8 text-muted-foreground/40 mx-auto mb-2" />
+                      <p className="text-sm text-muted-foreground">Gravação não disponível</p>
                     </div>
                   )}
-
-                  <div>
-                    <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-2">Gravação</h3>
-                    {retellData?.recording_url ? (
-                      <AudioPlayer url={retellData.recording_url} />
-                    ) : (
-                      <div className="bg-muted/30 rounded-2xl p-6 text-center">
-                        <Volume2 className="w-8 h-8 text-muted-foreground/40 mx-auto mb-2" />
-                        <p className="text-sm text-muted-foreground">Gravação não disponível</p>
-                      </div>
-                    )}
-                  </div>
-
-                  <div>
-                    <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-2">Transcrição</h3>
-                    <TranscriptViewer
-                      transcript={retellData?.transcript || selectedCall.transcript}
-                      transcriptObject={retellData?.transcript_object || null}
-                    />
-                  </div>
                 </div>
-              )}
+
+                <div>
+                  <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-2">Transcrição</h3>
+                  <TranscriptViewer
+                    transcription={selectedCall.transcription}
+                    transcriptObject={meta(selectedCall).transcript_object || null}
+                  />
+                </div>
+              </div>
             </ScrollArea>
           )}
         </SheetContent>
