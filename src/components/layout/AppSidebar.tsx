@@ -21,14 +21,8 @@ export function AppSidebar() {
   return (
     <aside className="w-[220px] min-h-screen bg-sidebar border-r border-sidebar-border flex flex-col shrink-0">
       {/* Logo */}
-      <div className="h-14 flex items-center gap-2 px-5 border-b border-sidebar-border">
-        <div className="w-7 h-7 rounded-lg bg-primary flex items-center justify-center">
-          <Zap className="w-4 h-4 text-primary-foreground" />
-        </div>
-        <div>
-          <span className="text-sm font-semibold text-sidebar-accent-foreground tracking-tight">PLANNUS VOICE</span>
-          <span className="text-xxs text-sidebar-foreground ml-1">GROWTH</span>
-        </div>
+      <div className="h-14 flex items-center px-4 border-b border-sidebar-border">
+        <img src="/logo-plannus.png" alt="Plannus Voice" className="h-8 w-auto" />
       </div>
 
       {/* Nav */}

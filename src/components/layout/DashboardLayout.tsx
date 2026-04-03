@@ -27,14 +27,8 @@ function LoginScreen({ onLogin }: { onLogin: () => void }) {
   return (
     <div className="min-h-screen bg-background flex items-center justify-center p-4">
       <div className="w-full max-w-sm">
-        <div className="flex items-center gap-3 mb-8">
-          <div className="w-9 h-9 rounded-xl bg-primary flex items-center justify-center">
-            <span className="text-primary-foreground text-sm font-bold">A</span>
-          </div>
-          <div>
-            <div className="text-base font-bold text-foreground tracking-tight">PLANNUS VOICE</div>
-            <div className="text-xs text-muted-foreground">Growth Engine</div>
-          </div>
+        <div className="flex items-center justify-center mb-8">
+          <img src="/logo-plannus.png" alt="Plannus Voice" className="h-10 w-auto" />
         </div>
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
@@ -102,10 +96,7 @@ export function DashboardLayout() {
         <header className="h-14 border-b border-border flex items-center justify-between px-4 md:px-6 shrink-0">
           {/* Mobile: Logo | Desktop: Search */}
           <div className="flex items-center gap-2 md:hidden">
-            <div className="w-7 h-7 rounded-lg bg-primary flex items-center justify-center">
-              <span className="text-primary-foreground text-xs font-bold">A</span>
-            </div>
-            <span className="text-sm font-semibold text-foreground tracking-tight">PLANNUS VOICE</span>
+            <img src="/logo-plannus.png" alt="Plannus Voice" className="h-7 w-auto" />
           </div>
 
           <div className="hidden md:flex items-center gap-2 bg-secondary rounded-md px-3 py-1.5 w-72">
