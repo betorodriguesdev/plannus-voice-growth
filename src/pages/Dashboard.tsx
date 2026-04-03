@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import { MetricCard } from "@/components/dashboard/MetricCard";
-import { Church, Search, Smartphone, Phone, CalendarCheck, UserCheck } from "lucide-react";
+import { Church, Search, Smartphone, Phone, CalendarCheck, UserCheck, Mail, Eye } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 
 export default function Dashboard() {
@@ -14,6 +14,8 @@ export default function Dashboard() {
     calls: 0,
     demos: 0,
     clients: 0,
+    emailsSent: 0,
+    emailOpenRate: 0,
   });
   const [loading, setLoading] = useState(true);
 
@@ -32,6 +34,13 @@ export default function Dashboard() {
       const { count: callCount } = await supabase.from("call_logs").select("*", { count: "exact", head: true });
       const { count: demoCount } = await supabase.from("calendar_events").select("*", { count: "exact", head: true }).eq("event_type", "demo");
 
+      // Email stats
+      const { data: emailSteps } = await supabase.from("email_steps").select("status, opened_at");
+      const allEmailSteps = emailSteps || [];
+      const emailsSent = allEmailSteps.filter(s => s.status !== "pending" && s.status !== "cancelled").length;
+      const emailsOpened = allEmailSteps.filter(s => s.opened_at).length;
+      const emailOpenRate = emailsSent > 0 ? Math.round((emailsOpened / emailsSent) * 100) : 0;
+
       const all = allContacts;
       setStats({
         totalLeads: all.length,
@@ -42,6 +51,8 @@ export default function Dashboard() {
         calls: callCount || 0,
         demos: demoCount || 0,
         clients: all.filter(l => Array.isArray(l.tags) && l.tags.includes("cliente")).length,
+        emailsSent,
+        emailOpenRate,
       });
       setLoading(false);
     };
@@ -55,6 +66,8 @@ export default function Dashboard() {
     { title: "Ligações IA", value: loading ? "..." : stats.calls.toLocaleString(), change: 0, icon: Phone, spark: [0] },
     { title: "Demos Marcadas", value: loading ? "..." : stats.demos.toLocaleString(), change: 0, icon: CalendarCheck, spark: [0] },
     { title: "Clientes", value: loading ? "..." : stats.clients.toLocaleString(), change: 0, icon: UserCheck, spark: [0] },
+    { title: "Emails Enviados", value: loading ? "..." : stats.emailsSent.toLocaleString(), change: 0, icon: Mail, spark: [0] },
+    { title: "Taxa Abertura", value: loading ? "..." : `${stats.emailOpenRate}%`, change: 0, icon: Eye, spark: [0] },
   ];
 
   return (
@@ -64,7 +77,7 @@ export default function Dashboard() {
         <p className="text-sm md:text-xs text-muted-foreground">Visão geral do Plannus Voice Growth Engine</p>
       </div>
 
-      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
+      <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-8 gap-3">
         {metrics.map((m, i) => (
           <MetricCard key={i} {...m} sparkData={m.spark} />
         ))}

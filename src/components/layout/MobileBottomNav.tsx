@@ -5,7 +5,7 @@ import {
 import { useState } from "react";
 import { Sheet, SheetContent, SheetTrigger, SheetTitle } from "@/components/ui/sheet";
 import {
-  CalendarDays, Brain, Mail, Settings, Zap, Calendar
+  CalendarDays, Brain, Mail, Settings, Zap, Calendar, Send
 } from "lucide-react";
 
 const mainTabs = [
@@ -23,6 +23,7 @@ const allNavItems = [
   { to: "/calendar", icon: Calendar, label: "Calendário" },
   { to: "/pipeline", icon: Kanban, label: "Pipeline" },
   { to: "/discovery", icon: Brain, label: "Descoberta IA" },
+  { to: "/emails", icon: Send, label: "Emails" },
   { to: "/automation", icon: Mail, label: "Automação" },
   { to: "/analytics", icon: BarChart3, label: "Analytics" },
   { to: "/settings", icon: Settings, label: "Configurações" },

@@ -15,6 +15,7 @@ import Analytics from "./pages/Analytics";
 import SettingsPage from "./pages/Settings";
 import CalendarPage from "./pages/Calendar";
 import BookDemo from "./pages/BookDemo";
+import EmailCampaigns from "./pages/EmailCampaigns";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -34,6 +35,7 @@ const App = () => (
             <Route path="/pipeline" element={<Pipeline />} />
             <Route path="/discovery" element={<AIDiscovery />} />
             <Route path="/automation" element={<ContactAutomation />} />
+            <Route path="/emails" element={<EmailCampaigns />} />
             <Route path="/analytics" element={<Analytics />} />
             <Route path="/calendar" element={<CalendarPage />} />
             <Route path="/settings" element={<SettingsPage />} />

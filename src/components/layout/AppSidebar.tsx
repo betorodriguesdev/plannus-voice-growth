@@ -1,6 +1,6 @@
 import { NavLink } from "react-router-dom";
 import {
-  LayoutDashboard, Church, CalendarDays, Kanban, Brain, Mail, BarChart3, Settings, Zap, Calendar, Phone
+  LayoutDashboard, Church, CalendarDays, Kanban, Brain, Mail, BarChart3, Settings, Zap, Calendar, Phone, Send
 } from "lucide-react";
 
 const navItems = [
@@ -11,6 +11,7 @@ const navItems = [
   { to: "/calendar", icon: Calendar, label: "Calendário" },
   { to: "/pipeline", icon: Kanban, label: "Pipeline" },
   { to: "/discovery", icon: Brain, label: "Descoberta IA" },
+  { to: "/emails", icon: Send, label: "Email Outreach" },
   { to: "/automation", icon: Mail, label: "Automação" },
   { to: "/analytics", icon: BarChart3, label: "Analytics" },
   { to: "/settings", icon: Settings, label: "Configurações" },
