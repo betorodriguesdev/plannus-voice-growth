@@ -96,7 +96,7 @@ export function DashboardLayout() {
         <header className="h-14 border-b border-border flex items-center justify-between px-4 md:px-6 shrink-0">
           {/* Mobile: Logo | Desktop: Search */}
           <div className="flex items-center gap-2 md:hidden">
-            <img src="/logo-plannus.png" alt="Plannus Voice" className="h-7 w-auto" />
+            <img src="/logo-plannus.png" alt="Plannus Voice" className="h-10 w-auto" />
           </div>
 
           <div className="hidden md:flex items-center gap-2 bg-secondary rounded-md px-3 py-1.5 w-72">
