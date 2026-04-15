@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { Outlet } from "react-router-dom";
 import { AppSidebar } from "./AppSidebar";
 import { MobileBottomNav } from "./MobileBottomNav";
-import { Search, Bell } from "lucide-react";
+import { Search, Bell, LogOut } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 
 function LoginScreen({ onLogin }: { onLogin: () => void }) {
@@ -118,9 +118,13 @@ export function DashboardLayout() {
               <Bell className="w-4 h-4 text-muted-foreground" />
               <span className="absolute top-2 right-2 w-2 h-2 bg-primary rounded-full" />
             </button>
-            <div className="w-8 h-8 rounded-full bg-primary/20 flex items-center justify-center text-primary text-xs font-medium">
-              U
-            </div>
+            <button
+              onClick={() => supabase.auth.signOut()}
+              className="w-9 h-9 rounded-xl flex items-center justify-center hover:bg-destructive/10 transition-colors"
+              title="Sair"
+            >
+              <LogOut className="w-4 h-4 text-muted-foreground" />
+            </button>
           </div>
         </header>
 
