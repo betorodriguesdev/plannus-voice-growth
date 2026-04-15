@@ -326,8 +326,13 @@ serve(async (req) => {
       throw new Error("OpenAI returned invalid format");
     }
 
-    // Sempre usar Amanda como sender pra consistência
-    const sender = "Amanda | Plannus <amanda@innovacall.co>";
+    // Wrap body_html with smaller font
+    for (const step of steps) {
+      step.body_html = `<div style="font-family: Arial, sans-serif; font-size: 14px; line-height: 1.6; color: #333;">${step.body_html}</div>`;
+    }
+
+    // Sender
+    const sender = "Amanda | Plannus Voice <amanda@innovacall.co>";
 
     // Se existia uma sequência parada, deletar
     if (existing) {

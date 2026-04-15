@@ -28,7 +28,7 @@ function LoginScreen({ onLogin }: { onLogin: () => void }) {
     <div className="min-h-screen bg-background flex items-center justify-center p-4">
       <div className="w-full max-w-sm">
         <div className="flex items-center justify-center mb-8">
-          <img src="/logo-plannus.png" alt="Plannus Voice" className="h-14 w-auto" />
+          <img src="/logo-plannus.png" alt="Plannus Voice" className="h-20 w-auto" />
         </div>
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
@@ -96,7 +96,7 @@ export function DashboardLayout() {
         <header className="h-14 border-b border-border flex items-center justify-between px-4 md:px-6 shrink-0">
           {/* Mobile: Logo | Desktop: Search */}
           <div className="flex items-center gap-2 md:hidden">
-            <img src="/logo-plannus.png" alt="Plannus Voice" className="h-14 w-auto" />
+            <img src="/logo-plannus.png" alt="Plannus Voice" className="h-20 w-auto" />
           </div>
 
           <div className="hidden md:flex items-center gap-2 bg-secondary rounded-md px-3 py-1.5 w-72">
