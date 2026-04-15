@@ -98,7 +98,9 @@ export default function Pipeline() {
 
       <div className="flex gap-2 overflow-x-auto pb-4">
         {columns.map(col => {
-          const colLeads = leads.filter(l => getColumn(l) === col);
+          const colLeads = leads
+            .filter(l => getColumn(l) === col)
+            .sort((a, b) => col === "NOVO" ? new Date(b.created_at).getTime() - new Date(a.created_at).getTime() : 0);
           return (
             <div
               key={col}
