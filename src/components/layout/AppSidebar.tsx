@@ -21,8 +21,8 @@ export function AppSidebar() {
   return (
     <aside className="w-[220px] min-h-screen bg-sidebar border-r border-sidebar-border flex flex-col shrink-0">
       {/* Logo */}
-      <div className="h-14 flex items-center px-4 border-b border-sidebar-border">
-        <img src="/logo-plannus.png" alt="Plannus Voice" className="h-11 w-auto" />
+      <div className="h-20 flex items-center px-4 border-b border-sidebar-border">
+        <img src="/logo-plannus.png" alt="Plannus Voice" className="h-16 w-auto" />
       </div>
 
       {/* Nav */}
